@@ -2,9 +2,11 @@
 /**
  * Plugin Name: Things Taylor Hates
  * Description: A collection of toggles to disable WordPress features Taylor dislikes.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: SP4RKL
  * License: GPL2
+ * Text Domain: tth
+ * Domain Path: /languages
  */
 
 // Exit if accessed directly
@@ -14,6 +16,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define option name
 define( 'TTH_OPTION_NAME', 'tth_settings' );
+
+// Load translations.
+function tth_load_textdomain() {
+    load_plugin_textdomain( 'tth', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
+add_action( 'init', 'tth_load_textdomain' );
 
 // Get settings with defaults
 function tth_get_settings() {
@@ -51,9 +59,15 @@ add_action( 'admin_menu', 'tth_admin_menu' );
 
 // Settings page callback
 function tth_settings_page() {
+    // Defense in depth: the menu already gates on manage_options, but the
+    // callback must verify the current user too.
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
     // Handle form submission
     if ( isset( $_POST['tth_submit'] ) && check_admin_referer( 'tth-settings-update' ) ) {
-        $options = tth_get_settings();
+        $options    = tth_get_settings();
         $known_keys = array_keys( $options );
         foreach ( $known_keys as $key ) {
             if ( isset( $_POST[ $key ] ) ) {
@@ -63,7 +77,7 @@ function tth_settings_page() {
             }
         }
         update_option( TTH_OPTION_NAME, $options );
-        echo '<div class="notice notice-success"><p>Settings saved.</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'tth' ) . '</p></div>';
     }
     $options = tth_get_settings();
     ?>
@@ -84,26 +98,43 @@ function tth_settings_page() {
                 </tr>
                 <!-- Add more toggles here -->
             </table>
-            <?php submit_button(); ?>
+            <?php submit_button( null, 'primary', 'tth_submit' ); ?>
         </form>
     </div>
     <?php
 }
 
-// Function to disable RankMath TOC on pages based on toggle
-function tth_disable_rank_math_toc_on_pages( $enabled ) {
+// Function to disable RankMath TOC test on pages based on toggle.
+//
+// Rank Math exposes its content-analysis tests via the
+// `rank_math/researches/tests` filter, keyed by test ID. The Table of Contents
+// test ID is `contentHasTOC`. `$type` is the object type (`post`, `user`,
+// `term`) in the post editor, or the post type slug (e.g. `page`) in Rank
+// Math's AI content-analysis path.
+function tth_disable_rank_math_toc_on_pages( $tests, $type ) {
     $options = tth_get_settings();
-    // If toggle is enabled and we are on a singular page, disable
-    if ( ! empty( $options['disable_rank_math_toc_pages'] ) && is_singular( 'page' ) ) {
-        return false;
+
+    // Toggle is off: leave every test intact.
+    if ( empty( $options['disable_rank_math_toc_pages'] ) ) {
+        return $tests;
     }
-    return $enabled;
+
+    // Resolve the post type. In the editor $type is the object type ('post');
+    // in the AI analysis path it is already the post type slug.
+    $post_type = ( 'post' === $type ) ? get_post_type() : $type;
+
+    // Only Pages are affected.
+    if ( 'page' !== $post_type ) {
+        return $tests;
+    }
+
+    unset( $tests['contentHasTOC'] );
+
+    return $tests;
 }
-// Add filter with priority 10 (default) but we can try later priority to ensure it runs after RankMath's filter
-add_filter( 'rank_math/analyze/test/has_toc', 'tth_disable_rank_math_toc_on_pages', 10, 1 );
+add_filter( 'rank_math/researches/tests', 'tth_disable_rank_math_toc_on_pages', 10, 2 );
 
 // Placeholder for other features Taylor hates
 function tth_placeholder_feature() {
     // Future code
 }
-?>

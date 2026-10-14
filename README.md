@@ -15,6 +15,18 @@ A WordPress plugin that provides toggles to disable features that Taylor dislike
 
 ## Changelog
 
+### 0.1.3
+- Fixed the RankMath filter: use `rank_math/researches/tests` and unset `contentHasTOC`
+- Fixed settings not saving (submit button name mismatch)
+- Added capability check and i18n to the settings page
+
+### 0.1.2
+- Fixed fatal error on activation (null coalescing → isset)
+- Author changed to SP4RKL
+
+### 0.1.1
+- Ensured RankMath TOC disable targets Pages
+
 ### 0.1.0
 - Initial release
 - Added toggle for disabling RankMath TOC on Pages

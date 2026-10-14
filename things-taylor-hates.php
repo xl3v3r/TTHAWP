@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Things Taylor Hates
  * Description: A collection of toggles to disable WordPress features Taylor dislikes.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Taylor Sebastian Ripley-Groce
  * License: GPL2
  */
@@ -97,7 +97,8 @@ function tth_disable_rank_math_toc_on_pages( $enabled ) {
     }
     return $enabled;
 }
-add_filter( 'rank_math/analyze/test/has_toc', 'tth_disable_rank_math_toc_on_pages' );
+// Add filter with priority 10 (default) but we can try later priority to ensure it runs after RankMath's filter
+add_filter( 'rank_math/analyze/test/has_toc', 'tth_disable_rank_math_toc_on_pages', 10, 1 );
 
 // Placeholder for other features Taylor hates
 function tth_placeholder_feature() {

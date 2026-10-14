@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Things Taylor Hates
  * Description: A collection of toggles to disable WordPress features Taylor dislikes.
- * Version: 0.1.1
- * Author: Taylor Sebastian Ripley-Groce
+ * Version: 0.1.2
+ * Author: SP4RKL
  * License: GPL2
  */
 
@@ -15,20 +15,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Define option name
 define( 'TTH_OPTION_NAME', 'tth_settings' );
 
+// Get settings with defaults
+function tth_get_settings() {
+    $defaults = array(
+        'disable_rank_math_toc_pages' => true, // default enabled (feature disabled)
+    );
+    $options = get_option( TTH_OPTION_NAME, array() );
+    // Merge defaults with existing options, preserving existing keys
+    return wp_parse_args( $options, $defaults );
+}
+
 // Initialize settings on activation
 function tth_install() {
-    // Add default options
     $defaults = array(
-        'disable_rank_math_toc_pages' => true, // default on? maybe we want toggle off by default? Let's default to enabled (feature disabled)
-        // future toggles go here
+        'disable_rank_math_toc_pages' => true,
     );
-    $options = get_option( TTH_OPTION_NAME );
-    if ( false === $options ) {
+    // Only add if not already set
+    if ( false === get_option( TTH_OPTION_NAME ) ) {
         add_option( TTH_OPTION_NAME, $defaults );
-    } else {
-        // Merge new defaults with existing options to avoid missing keys
-        $options = array_merge( $defaults, $options );
-        update_option( TTH_OPTION_NAME, $options );
     }
 }
 register_activation_hook( __FILE__, 'tth_install' );
@@ -49,9 +53,7 @@ add_action( 'admin_menu', 'tth_admin_menu' );
 function tth_settings_page() {
     // Handle form submission
     if ( isset( $_POST['tth_submit'] ) && check_admin_referer( 'tth-settings-update' ) ) {
-        // Get current options
-        $options = get_option( TTH_OPTION_NAME );
-        // Update each known option from POST
+        $options = tth_get_settings();
         $known_keys = array_keys( $options );
         foreach ( $known_keys as $key ) {
             if ( isset( $_POST[ $key ] ) ) {
@@ -63,7 +65,7 @@ function tth_settings_page() {
         update_option( TTH_OPTION_NAME, $options );
         echo '<div class="notice notice-success"><p>Settings saved.</p></div>';
     }
-    $options = get_option( TTH_OPTION_NAME );
+    $options = tth_get_settings();
     ?>
     <div class="wrap">
         <h1><?php esc_html_e( 'Things Taylor Hates Settings', 'tth' ); ?></h1>
@@ -74,7 +76,7 @@ function tth_settings_page() {
                     <th scope="row"><?php esc_html_e( 'Disable RankMath Table of Contents on Pages', 'tth' ); ?></th>
                     <td>
                         <label for="disable_rank_math_toc_pages">
-                            <input type="checkbox" name="disable_rank_math_toc_pages" id="disable_rank_math_toc_pages" value="1" <?php checked( $options['disable_rank_math_toc_pages'] ?? false, true ); ?> />
+                            <input type="checkbox" name="disable_rank_math_toc_pages" id="disable_rank_math_toc_pages" value="1" <?php checked( $options['disable_rank_math_toc_pages'], true ); ?> />
                             <?php esc_html_e( 'Enable this feature to disable RankMath TOC scoring on Pages', 'tth' ); ?>
                         </label>
                         <p class="description"><?php esc_html_e( 'When checked, RankMath will not score Table of Contents presence on Page post types.', 'tth' ); ?></p>
@@ -90,7 +92,7 @@ function tth_settings_page() {
 
 // Function to disable RankMath TOC on pages based on toggle
 function tth_disable_rank_math_toc_on_pages( $enabled ) {
-    $options = get_option( TTH_OPTION_NAME );
+    $options = tth_get_settings();
     // If toggle is enabled and we are on a singular page, disable
     if ( ! empty( $options['disable_rank_math_toc_pages'] ) && is_singular( 'page' ) ) {
         return false;
